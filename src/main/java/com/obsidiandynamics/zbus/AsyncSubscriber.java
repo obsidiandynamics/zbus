@@ -10,7 +10,7 @@ public final class AsyncSubscriber extends Thread implements SafeCloseable {
   private volatile ZSubscriber subscriber;
   
   private AsyncSubscriber(Supplier<ZSubscriber> factory) {
-    super("AsyncSubsriber");
+    super("AsyncSubscriber");
     this.factory = factory;
   }
   
