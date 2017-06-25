@@ -5,7 +5,7 @@ apply plugin: 'java'
 apply plugin: 'maven-publish'
 
 group = 'com.obsidiandynamics.zbus'
-version = '0.1.0'
+version = '0.1.1-SNAPSHOT'
 
 def packageName = 'zbus-core'
 
