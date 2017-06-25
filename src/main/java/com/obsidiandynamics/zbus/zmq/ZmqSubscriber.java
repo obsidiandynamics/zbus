@@ -13,7 +13,7 @@ public final class ZmqSubscriber implements ZSubscriber {
   
   private final ZmqBus bus;
   
-  private final String topic;
+  private final String terminatedTopic;
   
   private final Context context;
   
@@ -21,7 +21,7 @@ public final class ZmqSubscriber implements ZSubscriber {
 
   ZmqSubscriber(ZmqBus bus, String topic) {
     this.bus = bus;
-    this.topic = topic;
+    terminatedTopic = ZmqBus.terminateTopic(topic);
     context = ZMQ.context(1);
     socket = context.socket(ZMQ.SUB);
     socket.connect(bus.getSocketAddress());
@@ -47,7 +47,7 @@ public final class ZmqSubscriber implements ZSubscriber {
     }
     
     if (str != null) {
-      final String encoded = str.substring(topic.length() + 1);
+      final String encoded = str.substring(terminatedTopic.length());
       return bus.getCodec().decode(encoded);
     } else {
       return null;

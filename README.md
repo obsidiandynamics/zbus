@@ -1,5 +1,6 @@
 Z/bus
 ===
+[ ![Download](https://api.bintray.com/packages/obsidiandynamics/zbus/zbus-core/images/download.svg) ](https://bintray.com/obsidiandynamics/zbus/zbus-core/_latestVersion)
 
 Z/bus is a simple library for building distributed applications using a pub/sub pattern over [0MQ](http://zeromq.org/).
 
@@ -25,7 +26,7 @@ For Maven:
 ```xml
 <dependency>
   <groupId>com.obsidiandynamics.zbus</groupId>
-  <artifactId>zbus</artifactId>
+  <artifactId>zbus-core</artifactId>
   <version>0.1.0</version>
   <type>pom</type>
 </dependency>
@@ -34,7 +35,7 @@ For Maven:
 For Gradle:
 
 ```groovy
-compile 'com.obsidiandynamics.zbus:zbus:0.1.0'
+compile 'com.obsidiandynamics.zbus:zbus-core:0.1.0'
 ```
 
 ## Hello world
@@ -51,53 +52,53 @@ Let's write a basic 'hello world' pub/sub application.
 Starting with the publisher...
 
 ```java
-  public static void main(String[] args) {
-    final ZBus bus = new ZmqBus("tcp://*:5557", new StringCodec());
-    final ZPublisher pub = bus.getPublisher("testTopic");
+public static void main(String[] args) {
+  final ZBus bus = new ZmqBus("tcp://*:5557", new StringCodec());
+  final ZPublisher pub = bus.getPublisher("testTopic");
 
-    System.out.println("Started Z/bus publisher");
-    
-    while (true) {
-      pub.send("hello");
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        System.out.println("Publisher exiting");
-        break;
-      }
+  System.out.println("Started Z/bus publisher");
+  
+  while (true) {
+    pub.send("hello");
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      System.out.println("Publisher exiting");
+      break;
     }
-    
-    pub.close();
-    bus.close();
   }
+  
+  pub.close();
+  bus.close();
+}
 ```
 
-And now to the subscriber...
+And now the subscriber...
 
 ```java
-  public static void main(String[] args) {
-    final ZBus bus = new ZmqBus("tcp://*:5557", new StringCodec());
-    final ZSubscriber sub = bus.getSubscriber("testTopic");
+public static void main(String[] args) {
+  final ZBus bus = new ZmqBus("tcp://*:5557", new StringCodec());
+  final ZSubscriber sub = bus.getSubscriber("testTopic");
 
-    System.out.println("Started Z/bus (sync) subscriber");
+  System.out.println("Started Z/bus (sync) subscriber");
+  
+  while (true) {
+    final Object received = sub.receive();
+    if (received == null) break;
     
-    while (true) {
-      final Object received = sub.receive();
-      if (received == null) break;
-      
-      System.out.println("Received " + received);
-    }
-    
-    sub.close();
-    bus.close();
+    System.out.println("Received " + received);
   }
+  
+  sub.close();
+  bus.close();
+} 
 ```
 
 Start these examples as two separate process. (The order isn't relevant, as 0MQ allows for either party to operate independent of the other.) You should see the text 'hello' being printed in one second intervals.
 
-Both examples have the first line in common: `ZBus bus = new ZmqBus("tcp://*:5557", new StringCodec())`. This creates a new instance of a Z/bus, which can act as either the publisher or a subscriber (but never both within the same process), depending on how you use it. The publisher example creates a new publisher with `ZBus.getPublisher(String topic)` while the subscriber does `ZBus.getSubscriber(String topic)`. The topics must match exactly, or the messages will not flow through.
+Both examples have the first line in common: `ZBus bus = new ZmqBus("tcp://*:5557", new StringCodec())`. This creates a new instance of a Z/bus listening on port 5557 across all interfaces, using direct string (un)marshaling. The bus can act as either the publisher or a subscriber (but never both within the same process), depending on how you use it. The publisher example creates a new publisher with `ZBus.getPublisher(String topic)` while the subscriber does `ZBus.getSubscriber(String topic)`. The topics must match exactly, or the messages will not flow through.
 
-| Note: The underlying 0MQ library is more relaxed with respect to topic matching, allowing for subscriptions to a leading substring of the published topic, rather to the exact topic string. This could be used to implement topic hierarchies. At this stage Z/bus is stricter, requiring an exact topic match and only a single topic per subscriber. This could be improved in the future.
+> Note: The underlying 0MQ library is more relaxed with respect to topic matching, allowing for subscriptions to a leading substring of the published topic, rather to the exact topic string. This could be used to implement topic hierarchies. At this stage Z/bus is stricter, requiring an exact topic match and only a single topic per subscriber. This could be improved in the future.
 
 Next, the publisher goes into an endless loop, sending the string `hello` using `ZPublisher.send(Object message)` at one second intervals. Conversely, the subscriber hangs a read on `ZSubscriber.receive()`, which returns when a message is received (or `null` if the connection is terminated on the subscriber's end).
 
@@ -107,26 +108,28 @@ Afterwards both parties clean up by closing both the publisher/subscriber and th
 The blocking receive is a fairly standard pattern for receiving messages in 0MQ, and is achieved with a conventional `ZSubscriber`. As an added convenience, Z/bus also offers the `AsyncSubscriber` - a dispatcher that uses the callback pattern, thus avoiding the need to block.
 
 ```java
-  public static void main(String[] args) {
-    final ZBus bus = new ZmqBus("tcp://*:5557", new StringCodec());
+public static void main(String[] args) {
+  final ZBus bus = new ZmqBus("tcp://*:5557", new StringCodec());
 
-    System.out.println("Started Z/bus (async) subscriber");
-    
-    final AsyncSubscriber sub = AsyncSubscriber
-    .using(() -> bus.getSubscriber("testTopic"))
-    .onReceive(msg -> {
-      System.out.println("Received " + msg);
-    });
-    
-    try {
-      Thread.sleep(Long.MAX_VALUE);
-    } catch (InterruptedException e) {
-      System.out.println("Subscriber exiting");
-    }
-    
-    sub.close();
-    bus.close();
+  System.out.println("Started Z/bus (async) subscriber");
+  
+  final AsyncSubscriber sub = AsyncSubscriber
+  .using(() -> bus.getSubscriber("testTopic"))
+  .onReceive(msg -> {
+    System.out.println("Received " + msg);
+  });
+  
+  try {
+    Thread.sleep(Long.MAX_VALUE);
+  } catch (InterruptedException e) {
+    System.out.println("Subscriber exiting");
   }
+  
+  sub.close();
+  bus.close();
+}
 ```
 
-The example above is similar to our first subscriber, but in this case there is no `ZSubscriber` instantiated. Instead, we use `AsyncSubscriber`, passing it a factory for creating a `ZSubscriber` instance via a lambda expression. The `onReceive()` method is then called, supplying a handler for receiving messages. The factory here is crucial, as 0MQ requires that the socket receiver must be the same thread that opened the socket. Because `AsyncSubscriber` runs in a dedicated thread, it must be the one that opens the socket maintains custody over it. Like a conventional subscriber, an `AsyncSubscriber` can be closed by any thread.
+The example above is similar to our first subscriber, but in this case there is no `ZSubscriber` instantiated. Instead, we use `AsyncSubscriber`, passing it a factory for creating a `ZSubscriber` instance via a lambda expression. The `onReceive()` method is then called, supplying a handler for receiving messages. That's it, Z/bus will now start receiving messages and delegating them onto the `onReceive` handler.
+
+> Note: The factory here is crucial, as 0MQ requires that the socket receiver must be the same thread that opened the socket. Because `AsyncSubscriber` runs in a dedicated thread, it must be the one that opens the socket maintains custody over it. Like a conventional subscriber, an `AsyncSubscriber` can be closed by any thread.

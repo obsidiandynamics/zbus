@@ -69,4 +69,9 @@ public final class ZmqBus implements ZBus {
       sharedSocket.close();
     }
   }
+  
+  static String terminateTopic(String topic) {
+    if (topic.contains("\n")) throw new IllegalArgumentException("Topic cannot contain the newline character");
+    return topic + '\n';
+  }
 }

@@ -1,4 +1,13 @@
+plugins {
+  id 'com.jfrog.bintray' version '1.7.3'
+}
 apply plugin: 'java'
+apply plugin: 'maven-publish'
+
+group = 'com.obsidiandynamics.zbus'
+version = '0.1.0'
+
+def packageName = 'zbus-core'
 
 repositories {
   jcenter()
@@ -11,4 +20,88 @@ dependencies {
   compile 'com.owlike:genson:1.4'
   
   testCompile 'com.obsidiandynamics.indigo:indigo-assurance:0.9.2'
+}
+
+def envUser = 'BINTRAY_USER'
+def envKey = 'BINTRAY_KEY'
+task bintrayCredentialsCheck {
+  doLast {
+    if (System.getenv(envUser) == null) {
+      throw new GradleException("No Bintray username specified; set with 'export ${envUser}=<username>'")
+    }
+    if (System.getenv(envKey) == null) {
+      throw new GradleException("No Bintray key specified; set with 'export ${envKey}=<key>'")
+    }
+  }
+}
+
+def packageDesc = 'Simple library for building distributed pub/sub applications on top of 0MQ'
+bintray {
+  user = System.getenv(envUser)
+  key = System.getenv(envKey)
+  publications = ['mavenJava']
+  pkg {
+    repo = 'zbus'
+    name = packageName
+    userOrg = 'obsidiandynamics'
+    desc = packageDesc
+    websiteUrl = 'https://github.com/obsidiandynamics/zbus'
+    licenses = ['BSD New']
+    vcsUrl = 'https://github.com/obsidiandynamics/zbus'
+    publicDownloadNumbers = true
+    githubRepo = 'obsidiandynamics/zbus'
+    override = true
+    publish = false
+    version {
+      name = project(':').version
+      desc = packageDesc
+      released  = new Date()
+      vcsTag = project(':').version
+    }
+  }
+}
+
+// invoke this task when ready to publish to Bintray
+bintrayUpload {
+  dependsOn bintrayCredentialsCheck
+}
+
+jar {
+  baseName packageName
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+  baseName packageName
+  classifier = 'javadoc'
+  from "$buildDir/docs/javadoc"
+}
+ 
+task sourcesJar(type: Jar) {
+  baseName packageName
+  from sourceSets.main.allSource
+  classifier = 'sources'
+}
+ 
+artifacts {
+  archives jar
+  archives javadocJar
+  archives sourcesJar
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      groupId group
+      artifactId packageName
+      version project(':').version
+      from components.java
+      artifact sourcesJar
+      artifact javadocJar
+    }
+  }
+  repositories {
+    maven {
+      url "${project(':').projectDir}/../repo"
+    }
+  }
 }
